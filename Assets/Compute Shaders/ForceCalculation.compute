@@ -1,0 +1,23 @@
+#pragma kernel Forces
+
+int Amount;
+float G;
+RWStructuredBuffer<float3> Positions;
+RWStructuredBuffer<float> Mass;
+RWStructuredBuffer<float3> Result;
+
+[numthreads(64,1,1)]
+void Forces(uint3 id : SV_DispatchThreadID)
+{
+    Result[id.x] = float3(0, 0, 0);
+    for (int i = 0; i < Amount; i++)
+    {
+        const float dist = distance(Positions[id.x], Positions[i]);
+        if (dist <= 0.0f)
+        {
+            continue;
+        }
+        const float3 direction = (Positions[i] - Positions[id.x]) / dist;
+        Result[id.x] += direction * G * Mass[id.x] * Mass[i] / (dist * dist);
+    }
+}
