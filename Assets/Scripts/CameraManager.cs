@@ -2,22 +2,34 @@ using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using Cursor = UnityEngine.Cursor;
 using Toggle = UnityEngine.UI.Toggle;
 
 public class CameraManager : MonoBehaviour
 {
     public static CameraManager instance;
-    [Header("Input Actions")] public InputAction mousePosition;
+    [Header("Input Actions")]
+    public InputAction mousePosition;
     public InputAction manualModeToggler;
     public InputAction zoomControls;
 
-    [Header("References")] public Toggle manualModeIndicator;
+    [Header("References")]
+    public Toggle manualModeIndicator;
     public TMP_Text sizeLabel;
+    public GameObject manulModeTutorial;
+    private Camera _camera;
+    public Volume volume;
+    private Bloom _bloom;
+
+    [Header("Parameteres")]
     public float manualZoomModifier = 10;
     public float moveModifier;
+    public bool useVisualEffects;
+
     private Vector3 _delta;
-    private Camera _camera;
+
     private bool _manualMode;
     private float _zoomModifier = 1.0f;
     private float _manulZoomValue = 100;
@@ -25,6 +37,8 @@ public class CameraManager : MonoBehaviour
     private float _sizeVel;
     private float _smoothTime = 1.0f;
     private float _manualSmoothTime = 0.5f;
+
+
 
     public Camera GetCamera()
     {
@@ -38,6 +52,8 @@ public class CameraManager : MonoBehaviour
         manualModeToggler.Enable();
         zoomControls.Enable();
         _camera = GetComponent<Camera>();
+
+        volume.profile.TryGet<Bloom>(out _bloom);
     }
 
     private void OnDisable()
@@ -66,6 +82,7 @@ public class CameraManager : MonoBehaviour
         }
 
         manualModeIndicator.isOn = _manualMode;
+        manulModeTutorial.SetActive(_manualMode);
     }
 
     void Update()
@@ -74,12 +91,10 @@ public class CameraManager : MonoBehaviour
         {
             return;
         }
-
         if (manualModeToggler.triggered)
         {
             ToggleManualMode(!_manualMode);
         }
-
         if (_manualMode)
         {
             HandleCameraManually();
@@ -92,9 +107,15 @@ public class CameraManager : MonoBehaviour
         sizeLabel.text = _camera.orthographicSize.ToString(CultureInfo.InvariantCulture);
     }
 
+    public void ToggleVisualEffects()
+    {
+        useVisualEffects = !useVisualEffects;
+        _bloom.active = useVisualEffects;
+    }
+
     private void HandleCameraManually()
     {
-        _delta = mousePosition.ReadValue<Vector2>();
+        _delta = -mousePosition.ReadValue<Vector2>();
         var offset = _delta * (_camera.orthographicSize * moveModifier);
         var cameraPos = _camera.transform.localPosition;
         var targetCamPos = cameraPos + offset;
@@ -127,12 +148,17 @@ public class CameraManager : MonoBehaviour
             maxDistanceFromCenter = Mathf.Max(maxDistanceFromCenter, Vector3.Distance(body.position, center));
         }
 
-        center.z = -BodyManager.instance.sizeModifier - 1;
+        center.z = -BodyManager.instance.simulationParameters.sizeModifier - 1;
         transform.position = Vector3.SmoothDamp(transform.position, center, ref _positionVel, _smoothTime);
 
 
         float targetSize = maxDistanceFromCenter * _zoomModifier;
         _camera.orthographicSize = Mathf.SmoothDamp(_camera.orthographicSize, targetSize,
             ref _sizeVel, _smoothTime);
+    }
+
+    private void CalculateLensDistortion()
+    {
+
     }
 }

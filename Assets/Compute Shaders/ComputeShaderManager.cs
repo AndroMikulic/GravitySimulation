@@ -10,11 +10,22 @@ public class ComputeShaderManager : MonoBehaviour
     ComputeBuffer _massBuffer;
     int _kernel;
     uint _threadGroupSize;
-    public Vector3[] _output;
+    Vector3[] _output;
 
     private void Awake()
     {
         ComputeShaderManager.instance = this;
+    }
+
+    void OnDisable()
+    {
+        try
+        {
+            _massBuffer.Release();
+            _resultBuffer.Release();
+            _positionBuffer.Release();
+        }
+        catch { }
     }
 
     public void SetUpComputeShader()
@@ -22,12 +33,12 @@ public class ComputeShaderManager : MonoBehaviour
         instance = this;
         _kernel = physicsComputeShader.FindKernel("Forces");
         physicsComputeShader.GetKernelThreadGroupSizes(_kernel, out _threadGroupSize, out _, out _);
-        _resultBuffer = new ComputeBuffer(BodyManager.instance.amountOfBodies, sizeof(float) * 3);
-        _positionBuffer = new ComputeBuffer(BodyManager.instance.amountOfBodies, sizeof(float) * 3);
-        _massBuffer = new ComputeBuffer(BodyManager.instance.amountOfBodies, sizeof(float) * 1);
-        _output = new Vector3[BodyManager.instance.amountOfBodies];
-        physicsComputeShader.SetInt("Amount", BodyManager.instance.amountOfBodies);
-        physicsComputeShader.SetFloat("G", BodyManager.instance.G);
+        _resultBuffer = new ComputeBuffer(BodyManager.instance.simulationParameters.amountOfBodies, sizeof(float) * 3);
+        _positionBuffer = new ComputeBuffer(BodyManager.instance.simulationParameters.amountOfBodies, sizeof(float) * 3);
+        _massBuffer = new ComputeBuffer(BodyManager.instance.simulationParameters.amountOfBodies, sizeof(float) * 1);
+        _output = new Vector3[BodyManager.instance.simulationParameters.amountOfBodies];
+        physicsComputeShader.SetInt("Amount", BodyManager.instance.simulationParameters.amountOfBodies);
+        physicsComputeShader.SetFloat("G", BodyManager.instance.simulationParameters.G);
         physicsComputeShader.SetBuffer(_kernel, "Positions", _positionBuffer);
         physicsComputeShader.SetBuffer(_kernel, "Mass", _massBuffer);
     }
@@ -35,8 +46,8 @@ public class ComputeShaderManager : MonoBehaviour
     public void CalculateGravity()
     {
         physicsComputeShader.SetBuffer(_kernel, "Result", _resultBuffer);
-        var positions = new Vector3[BodyManager.instance.amountOfBodies];
-        var mass = new float[BodyManager.instance.amountOfBodies];
+        var positions = new Vector3[BodyManager.instance.simulationParameters.amountOfBodies];
+        var mass = new float[BodyManager.instance.simulationParameters.amountOfBodies];
         var i = 0;
         foreach (var body in BodyManager.instance.bodies)
         {
@@ -47,7 +58,7 @@ public class ComputeShaderManager : MonoBehaviour
 
         _positionBuffer.SetData(positions);
         _massBuffer.SetData(mass);
-        var threadGroups = (int) ((BodyManager.instance.amountOfBodies + (_threadGroupSize - 1)) / _threadGroupSize);
+        var threadGroups = (int)((BodyManager.instance.simulationParameters.amountOfBodies + (_threadGroupSize - 1)) / _threadGroupSize);
         physicsComputeShader.Dispatch(_kernel, threadGroups, 1, 1);
         _resultBuffer.GetData(_output);
         for (var j = 0; j < BodyManager.instance.bodies.Count; ++j)
@@ -58,7 +69,7 @@ public class ComputeShaderManager : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.Log(_output[j]);
+                Debug.Log(e.ToString());
             }
         }
     }
