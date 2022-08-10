@@ -156,9 +156,4 @@ public class CameraManager : MonoBehaviour
         _camera.orthographicSize = Mathf.SmoothDamp(_camera.orthographicSize, targetSize,
             ref _sizeVel, _smoothTime);
     }
-
-    private void CalculateLensDistortion()
-    {
-
-    }
 }
