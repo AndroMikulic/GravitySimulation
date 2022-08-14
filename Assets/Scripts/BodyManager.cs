@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using UnityEngine.InputSystem;
 
 public class BodyManager : MonoBehaviour
 {
@@ -12,17 +13,25 @@ public class BodyManager : MonoBehaviour
     public SimulationParameters simulationParameters;
     public List<Rigidbody> bodies = new();
 
+    [Header("Input Actions")]
+    public InputAction trailToggler;
+
     [Header("UI")]
     public RectTransform centerOfMassIcon;
     public RectTransform canvas;
 
-
-
+    private bool _trailLong = false;
     private bool _simulationRunning = false;
 
     private void Awake()
     {
         BodyManager.instance = this;
+        trailToggler.Enable();
+    }
+
+    private void onDisable()
+    {
+        trailToggler.Disable();
     }
 
 
@@ -33,9 +42,35 @@ public class BodyManager : MonoBehaviour
         {
             SpawnBody(id);
         }
-
-        ComputeShaderManager.instance.SetUpComputeShader();
+        if (simulationParameters.amountOfBodies < 64)
+        {
+            useComputeShader = false;
+        }
+        else
+        {
+            ComputeShaderManager.instance.SetUpComputeShader();
+        }
         _simulationRunning = true;
+    }
+
+    private void Update()
+    {
+        if (trailToggler.triggered)
+        {
+            _trailLong = !_trailLong;
+            foreach (var body in bodies)
+            {
+                TrailRenderer trail = body.GetComponent<TrailRenderer>();
+                if (_trailLong)
+                {
+                    trail.time = 16.0f;
+                }
+                else
+                {
+                    trail.time = 1.0f;
+                }
+            }
+        }
     }
 
     private void FixedUpdate()
@@ -121,9 +156,11 @@ public class BodyManager : MonoBehaviour
 
         GameObject body = Instantiate(bodyPrefab, position, Quaternion.identity);
 
-        float velX = Random.Range(-1.0f, 1.0f);
-        float velY = Random.Range(-1.0f, 1.0f);
-        Vector3 velocity = new Vector3(velX, velY, 0) * simulationParameters.velocityModifier;
+        // float velX = Random.Range(-1.0f, 1.0f);
+        // float velY = Random.Range(-1.0f, 1.0f);
+        float velX = posY;
+        float velY = -posX;
+        Vector3 velocity = new Vector3(velX, velY, 0).normalized * simulationParameters.velocityModifier * Random.Range(1, 2);
 
         Rigidbody rBody = body.GetComponent<Rigidbody>();
         rBody.velocity = velocity;

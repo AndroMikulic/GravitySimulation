@@ -65,7 +65,10 @@ public class ComputeShaderManager : MonoBehaviour
         {
             try
             {
-                BodyManager.instance.SetGravityForBody(BodyManager.instance.bodies[j], _output[j]);
+                if (_output[j] != Vector3.zero)
+                {
+                    BodyManager.instance.SetGravityForBody(BodyManager.instance.bodies[j], _output[j]);
+                }
             }
             catch (Exception e)
             {
